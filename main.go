@@ -5,17 +5,35 @@ import (
     "context"
     "fmt"
     "github.com/chromedp/cdproto/cdp"
+    "github.com/chromedp/cdproto/dom"
+    "github.com/chromedp/cdproto/network"
+    "github.com/chromedp/chromedp"
+    "github.com/mvdan/xurls"
     "io"
     "log"
     "os"
     "os/exec"
     "path/filepath"
     "strings"
-
-    "github.com/chromedp/chromedp"
+    "time"
 )
 
+// TODO: put in config file?
+var sources []string = []string {
+    "https://gfycat.com/",
+    "https://i.imgur.com/",
+    //"https://preview.redd.it/",
+}
+
 func main() {
+    if len(os.Args) <= 1 {
+        fmt.Println("./rpcvg <reddit url>")
+        fmt.Println("https://www.reddit.com/r/BetterEveryLoop/top/?t=week")
+        os.Exit(0)
+    }
+
+    ingestionUrl := os.Args[1]
+
     fmt.Println("Starting ingestion process...")
     workDir := "/data"
     outputDir := "/output"
@@ -23,52 +41,75 @@ func main() {
     if _, err := os.Stat(workDir); os.IsNotExist(err) {
         _ = os.Mkdir(workDir, os.ModePerm)
     } else {
-        runCommand(workDir, "find", strings.Split(fmt.Sprintf("%s -type f -name \"*.mp4\" -delete", workDir), " "))
+        runCommand(workDir, "find", strings.Split(fmt.Sprintf("%s -type f -name *.mp4 -delete", workDir), " "))
     }
 
     if _, err := os.Stat(outputDir); os.IsNotExist(err) {
         _ = os.Mkdir(outputDir, os.ModePerm)
     }
 
-    // create context
+    var html *string = nil
+    //var jsEval *string = nil
     ctx, cancel := chromedp.NewContext(context.Background())
     defer cancel()
 
-    var nodes []*cdp.Node
+    // TODO: scroll down the page some?
+    // https://github.com/chromedp/chromedp/issues/525
+    // scrolling currently doesn't work
+    err := chromedp.Run(
+        ctx,
+        SetCookie("over18", "yes", "www.reddit.com", "/", false, false),
+        chromedp.Navigate(ingestionUrl),
+        chromedp.Sleep(5000 * time.Millisecond),
+        //chromedp.Evaluate(`window.scrollTo(0,document.body.scrollHeight);`, &jsEval),
+        chromedp.Sleep(1000 * time.Millisecond),
+        //chromedp.Evaluate(`window.scrollTo(0,document.body.scrollHeight);`, &jsEval),
+        chromedp.Sleep(2000 * time.Millisecond),
+        chromedp.ActionFunc(func(ctx context.Context) error {
+            node, err := dom.GetDocument().Do(ctx)
+            if err != nil {
+                return err
+            }
 
-    err := chromedp.Run(ctx,
-        chromedp.Navigate("https://www.reddit.com/r/BetterEveryLoop/top/?t=week"),
-        chromedp.Nodes("a", &nodes))
+            data, err := dom.GetOuterHTML().WithNodeID(node.NodeID).Do(ctx)
+            if err != nil {
+                return err
+            }
+
+            html = &data
+            return err
+        }))
 
     if err != nil {
         fmt.Errorf("could not navigate to page: %v", err)
     }
 
-    // TODO: scroll down the page some?
-    // https://github.com/chromedp/chromedp/issues/525
+    fmt.Println("Loaded web page.. looking for URLs...")
 
-    // TODO: put in config file?
-    sources := []string {
-        "https://gfycat.com",
-        "https://i.imgur.com/",
-    }
+    rxStrict := xurls.Strict()
+    rawUrls := rxStrict.FindAllString(*html, -1)
+    filteredUrls := make([]string, 0)
 
-    urls := make([]string, 0)
-    for _, n := range nodes {
-        s := n.AttributeValue("href")
+    for _, s := range rawUrls {
+        //fmt.Println(s)
 
         for _, source := range sources {
             index := strings.Index(s, source)
             if index > -1 {
                 url := s[index:len(s)]
-                urls = append(urls, url)
+                filteredUrls = append(filteredUrls, url)
             }
         }
     }
 
-    fmt.Printf("Found %d media items...", len(urls))
+    count := len(filteredUrls)
+    if count < 1 {
+        fmt.Println("Didn't find any media to ingest!")
+        os.Exit(0)
+    }
+    fmt.Printf("Found %d media items...\n", count)
 
-    for _, url := range dedupeList(urls) {
+    for _, url := range dedupeList(filteredUrls) {
         fmt.Printf("Attempting %s\n", url)
         runCommand(workDir, "youtube-dl", strings.Split(fmt.Sprintf("--no-check-certificate --prefer-ffmpeg --restrict-filenames %s", url), " "))
     }
@@ -96,7 +137,7 @@ func main() {
     fmt.Println("COMPLETE!")
 }
 
-func runCommand(dir, command string, args []string) {
+func runCommand(dir, command string, args []string) error {
     cmd := exec.Command(command, args...)
     cmd.Dir = dir
 
@@ -107,11 +148,33 @@ func runCommand(dir, command string, args []string) {
     cmd.Stderr = mw
 
     if err := cmd.Run(); err != nil {
-        log.Panic(err)
+        return err
     }
 
     log.Println(stdBuffer.String())
+    return nil
 }
+
+func SetCookie(name, value, domain, path string, httpOnly, secure bool) chromedp.Action {
+    return chromedp.ActionFunc(func(ctx context.Context) error {
+        expr := cdp.TimeSinceEpoch(time.Now().Add(180 * 24 * time.Hour))
+        success, err := network.SetCookie(name, value).
+            WithExpires(&expr).
+            WithDomain(domain).
+            WithPath(path).
+            WithHTTPOnly(httpOnly).
+            WithSecure(secure).
+            Do(ctx)
+        if err != nil {
+            return err
+        }
+        if !success {
+            return fmt.Errorf("could not set cookie %s", name)
+        }
+        return nil
+    })
+}
+
 
 func dedupeList(s []string) []string {
     if len(s) <= 1 {

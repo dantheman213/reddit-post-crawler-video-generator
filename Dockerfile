@@ -25,7 +25,8 @@ RUN youtube-dl -U
 
 # App
 RUN apt-get install -y git
-RUN go get -t github.com/chromedp/chromedp
+RUN go get -t github.com/chromedp/chromedp && \
+    go get -t github.com/mvdan/xurls
 COPY main.go /usr/local/.
 
 ENTRYPOINT ["go", "run", "/usr/local/main.go"]
