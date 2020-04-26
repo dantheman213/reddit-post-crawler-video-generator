@@ -160,7 +160,8 @@ func main() {
         }
     }
 
-    runCommand(revisedSourceDir, "ffmpeg", strings.Split(fmt.Sprintf("-f concat -safe 0 -i /tmp/list.txt -c copy -movflags faststart -f mp4 -y %s", outputDir + "/export.mp4"), " "))
+    exportedFilePath := fmt.Sprintf("%s/export_%s.mp4", outputDir, time.Now().Format("20060102150405"))
+    runCommand(revisedSourceDir, "ffmpeg", strings.Split(fmt.Sprintf("-f concat -safe 0 -i /tmp/list.txt -c copy -movflags faststart -f mp4 -y %s", exportedFilePath), " "))
     fmt.Println("COMPLETE!")
 }
 
