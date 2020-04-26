@@ -76,14 +76,14 @@ func main() {
 
     for _, file := range files {
         revisedFile := fmt.Sprintf("%s.REVISED.mp4", file[0:len(file) - 4])
-        runCommand(workDir, "ffmpeg", strings.Split(fmt.Sprintf("-i %s -aspect 16:9 -vf scale=-2:1080,pad=1920:1080:0:0:black,fps=60 -crf 18 -pix_fmt yuv420p -movflags faststart -c:v libx264 -c:a aac -f mp4 -y %s", file, revisedFile), " "))
+        runCommand(workDir, "ffmpeg", strings.Split(fmt.Sprintf("-i %s -vf scale=1920:1080,scale=w=1920:h=1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black,fps=60 -crf 18 -pix_fmt yuv420p -movflags faststart -c:v libx264 -c:a aac -f mp4 -y %s", file, revisedFile), " "))
 
         if _, err := f.WriteString(fmt.Sprintf("file '%s'\n", revisedFile)); err != nil {
             log.Println(err)
         }
     }
 
-    runCommand(workDir, "ffmpeg", strings.Split(fmt.Sprintf("-f concat -safe 0 -i /tmp/list.txt faststart -c:v copy -c:a copy -f mp4 -y %s", outputDir + "/export.mp4"), " "))
+    runCommand(workDir, "ffmpeg", strings.Split(fmt.Sprintf("-f concat -safe 0 -i /tmp/list.txt -c:v copy -c:a copy -movflags faststart -f mp4 -y %s", outputDir + "/export.mp4"), " "))
     fmt.Println("COMPLETE!")
 }
 
@@ -143,4 +143,3 @@ func walkMatch(root, pattern string) ([]string, error) {
     }
     return matches, nil
 }
-
