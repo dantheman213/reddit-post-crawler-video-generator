@@ -24,7 +24,8 @@ docker run --name rpcvg \
 # Run container with multiple ingestions
 docker ... rpcvg:latest \
     https://www.reddit.com/r/BetterEveryLoop/top/?t=year \
-    https://www.reddit.com/r/gifs/top/?t=year https://www.reddit.com/r/funny/top/?t=year
+    https://www.reddit.com/r/gifs/top/?t=year \
+    https://www.reddit.com/r/funny/top/?t=year
 ```
 
 #### Windows
@@ -32,5 +33,7 @@ docker ... rpcvg:latest \
 Here are some example paths you can use:
 
 ```
--v C:\Users\YOURUSER\Desktop\rpcvg\cache:/cache -v C:\Users\YOURUSER\Desktop\rpcvg\source:/data -v C:\Users\YOURUSER\Desktop\rpcvg\output:/output
+-v C:\Users\YOURUSER\Desktop\rpcvg\cache:/cache
+-v C:\Users\YOURUSER\Desktop\rpcvg\source:/data
+-v C:\Users\YOURUSER\Desktop\rpcvg\output:/output
 ```
