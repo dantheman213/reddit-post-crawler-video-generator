@@ -8,7 +8,6 @@ RUN apt-get install -y curl libappindicator1 fonts-liberation
 RUN curl -o chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
 RUN apt install -y /tmp/chrome.deb
 
-
 # Install ffmpeg
 RUN apt-get install -y ffmpeg
 
