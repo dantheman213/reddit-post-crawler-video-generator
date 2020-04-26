@@ -4,7 +4,9 @@ import (
     "bytes"
     "context"
     "fmt"
+    "github.com/chromedp/cdproto/cdp"
     "github.com/chromedp/cdproto/dom"
+    "github.com/chromedp/cdproto/network"
     "github.com/chromedp/chromedp"
     "github.com/mvdan/xurls"
     "io"
@@ -54,8 +56,8 @@ func main() {
     // https://github.com/chromedp/chromedp/issues/525
     err := chromedp.Run(
         ctx, chromedp.Navigate(ingestionUrl),
-        //chromedp.WaitVisible("body"),
         chromedp.Sleep(5000 * time.Millisecond),
+        SetCookie("over18", "yes", "www.reddit.com", "/", false, false),
         chromedp.ActionFunc(func(ctx context.Context) error {
             node, err := dom.GetDocument().Do(ctx)
             if err != nil {
@@ -139,6 +141,27 @@ func runCommand(dir, command string, args []string) {
 
     log.Println(stdBuffer.String())
 }
+
+func SetCookie(name, value, domain, path string, httpOnly, secure bool) chromedp.Action {
+    return chromedp.ActionFunc(func(ctx context.Context) error {
+        expr := cdp.TimeSinceEpoch(time.Now().Add(180 * 24 * time.Hour))
+        success, err := network.SetCookie(name, value).
+            WithExpires(&expr).
+            WithDomain(domain).
+            WithPath(path).
+            WithHTTPOnly(httpOnly).
+            WithSecure(secure).
+            Do(ctx)
+        if err != nil {
+            return err
+        }
+        if !success {
+            return fmt.Errorf("could not set cookie %s", name)
+        }
+        return nil
+    })
+}
+
 
 func dedupeList(s []string) []string {
     if len(s) <= 1 {
