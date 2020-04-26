@@ -148,11 +148,11 @@ func main() {
     }
     defer f.Close()
 
-    // Normalize all the ingested videos into a common format: 1080p, 60fps, 16:9 aspect ratio without stretching image, etc.
+    // Normalize all the ingested videos into a common format: 1080p, 60fps, 16:9 aspect ratio without stretching image, pixel format, audio codec/bitrate/sample rate, etc.
     // Output videos into revised folder
     for _, file := range files {
         revisedFile := fmt.Sprintf("%s/%s.REVISED.mp4", revisedSourceDir, file[strings.LastIndex(file, "/") + 1:len(file) - 4])
-        runCommand(originalSourceDir, "ffmpeg", strings.Split(fmt.Sprintf("-i %s -vf scale=w=1920:h=1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black,fps=60 -crf 18 -pix_fmt yuv420p -movflags faststart -c:v libx264 -c:a aac -f mp4 -y %s", file, revisedFile), " "))
+        runCommand(originalSourceDir, "ffmpeg", strings.Split(fmt.Sprintf("-i %s -vf scale=w=1920:h=1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black,fps=60 -c:v libx264 -preset slow -crf 18 -pix_fmt yuv420p -c:a aac -b:a 128k -ar 44100 -map 0:a -movflags faststart -f mp4 -y %s", file, revisedFile), " "))
 
         // Write revisedfile into the file concat muxer list
         if _, err := f.WriteString(fmt.Sprintf("file '%s'\n", revisedFile)); err != nil {
