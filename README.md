@@ -13,9 +13,11 @@ This app works with Chrome (headless), ffmpeg, and youtube-dl wrapped in a Docke
 docker build -t rpcvg .
 
 # Run container
-## Linux / MacOS ##
-docker run -v /opt/rpcvg/sources:/data -v /opt/rpcvg/output:/output rpcvg:latest
+docker run -v /opt/rpcvg/sources:/data -v /opt/rpcvg/output:/output rpcvg:latest https://www.reddit.com/r/BetterEveryLoop/top/?t=year
+```
+#### Windows
 
-## Windows ##
-docker run -v C:\Users\YOURUSER\Desktop\rpcvg\source:/data -v C:\Users\YOURUSER\Desktop\rpcvg\output:/output rpcvg:latest
+You can use these paths on Windows:
+```
+ C:\Users\YOURUSER\Desktop\rpcvg\source:/data -v C:\Users\YOURUSER\Desktop\rpcvg\output:/output
 ```
