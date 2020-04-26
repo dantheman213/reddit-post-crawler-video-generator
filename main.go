@@ -44,17 +44,29 @@ func main() {
     filteredUrls := make([]string, 0)
 
     workDir := "/data"
+    originalSourceDir := workDir + "/original"
+    revisedSourceDir := workDir + "/revised"
     outputDir := "/output"
 
     if _, err := os.Stat(workDir); os.IsNotExist(err) {
         _ = os.Mkdir(workDir, os.ModePerm)
-    } else {
-        runCommand(workDir, "find", strings.Split(fmt.Sprintf("%s -type f -name *.mp4 -delete", workDir), " "))
     }
+
+    if _, err := os.Stat(originalSourceDir); os.IsNotExist(err) {
+        _ = os.Mkdir(originalSourceDir, os.ModePerm)
+    }
+
+    if _, err := os.Stat(revisedSourceDir); os.IsNotExist(err) {
+        _ = os.Mkdir(revisedSourceDir, os.ModePerm)
+    }
+
+    runCommand(workDir, "find", strings.Split(fmt.Sprintf("%s -type f -name *.mp4 -delete", workDir), " "))
 
     if _, err := os.Stat(outputDir); os.IsNotExist(err) {
         _ = os.Mkdir(outputDir, os.ModePerm)
     }
+
+    runCommand("/tmp", "rm", strings.Split("-fv /tmp/list.txt", " "))
 
     for _, ingestionUrl := range ingestionUrls {
         var html *string = nil
@@ -93,7 +105,7 @@ func main() {
             fmt.Errorf("could not navigate to page: %v", err)
         }
 
-        fmt.Println("Loaded web page.. looking for URLs...")
+        fmt.Printf("Loaded web page %s.. looking for URLs...\n", ingestionUrl)
 
         rxStrict := xurls.Strict()
         rawUrls := rxStrict.FindAllString(*html, -1)
@@ -118,14 +130,17 @@ func main() {
     }
     fmt.Printf("Found %d media items...\n", count)
 
+    // Check and proceed with update (if exists) for youtube-dl before proceeding.
+    runCommand(originalSourceDir, "youtube-dl", []string {"-U"})
+
+    // Go through each filteredUrl and download the video using youtube-dl
     for _, url := range dedupeList(filteredUrls) {
         fmt.Printf("Attempting %s\n", url)
-        runCommand(workDir, "youtube-dl", strings.Split(fmt.Sprintf("--no-check-certificate --prefer-ffmpeg --restrict-filenames %s", url), " "))
+        runCommand(originalSourceDir, "youtube-dl", strings.Split(fmt.Sprintf("--no-check-certificate --prefer-ffmpeg --restrict-filenames %s", url), " "))
     }
 
-    files, _ := walkMatch(workDir, "*.mp4")
-
-    runCommand("/tmp", "rm", strings.Split("-fv /tmp/list.txt", " "))
+    // Get the list of files that was downloaded to the original sources
+    files, _ := walkMatch(originalSourceDir, "*.mp4")
     f, err := os.OpenFile("/tmp/list.txt",
         os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
     if err != nil {
@@ -133,16 +148,19 @@ func main() {
     }
     defer f.Close()
 
+    // Normalize all the ingested videos into a common format: 1080p, 60fps, 16:9 aspect ratio without stretching image, etc.
+    // Output videos into revised folder
     for _, file := range files {
-        revisedFile := fmt.Sprintf("%s.REVISED.mp4", file[0:len(file) - 4])
-        runCommand(workDir, "ffmpeg", strings.Split(fmt.Sprintf("-i %s -vf scale=w=1920:h=1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black,fps=60 -crf 18 -pix_fmt yuv420p -movflags faststart -c:v libx264 -c:a aac -f mp4 -y %s", file, revisedFile), " "))
+        revisedFile := fmt.Sprintf("%s/%s.REVISED.mp4", revisedSourceDir, file[strings.LastIndex(file, "/") + 1:len(file) - 4])
+        runCommand(originalSourceDir, "ffmpeg", strings.Split(fmt.Sprintf("-i %s -vf scale=w=1920:h=1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black,fps=60 -crf 18 -pix_fmt yuv420p -movflags faststart -c:v libx264 -c:a aac -f mp4 -y %s", file, revisedFile), " "))
 
+        // Write revisedfile into the file concat muxer list
         if _, err := f.WriteString(fmt.Sprintf("file '%s'\n", revisedFile)); err != nil {
             log.Println(err)
         }
     }
 
-    runCommand(workDir, "ffmpeg", strings.Split(fmt.Sprintf("-f concat -safe 0 -i /tmp/list.txt -c copy -movflags faststart -f mp4 -y %s", outputDir + "/export.mp4"), " "))
+    runCommand(revisedSourceDir, "ffmpeg", strings.Split(fmt.Sprintf("-f concat -safe 0 -i /tmp/list.txt -c copy -movflags faststart -f mp4 -y %s", outputDir + "/export.mp4"), " "))
     fmt.Println("COMPLETE!")
 }
 
