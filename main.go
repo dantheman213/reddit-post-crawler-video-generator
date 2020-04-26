@@ -11,6 +11,7 @@ import (
     "github.com/mvdan/xurls"
     "io"
     "log"
+    "math/rand"
     "os"
     "os/exec"
     "path/filepath"
@@ -136,6 +137,7 @@ func main() {
     // Go through each filteredUrl and download the video using youtube-dl
     for _, url := range dedupeList(filteredUrls) {
         fmt.Printf("Attempting %s\n", url)
+        time.Sleep(time.Duration(random(1500, 6500)) * time.Millisecond) // make sure external providers don't throttle your ingestion
         runCommand(originalSourceDir, "youtube-dl", strings.Split(fmt.Sprintf("--cache-dir /cache --no-check-certificate --prefer-ffmpeg --restrict-filenames %s", url), " "))
     }
 
@@ -242,4 +244,8 @@ func walkMatch(root, pattern string) ([]string, error) {
         return nil, err
     }
     return matches, nil
+}
+
+func random(min, max int) int {
+    return rand.Intn(max - min) + min
 }
