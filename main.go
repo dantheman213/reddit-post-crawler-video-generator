@@ -44,16 +44,25 @@ func main() {
         fmt.Errorf("could not navigate to page: %v", err)
     }
 
-    // TODO
-    sourceUrl := "https://gfycat.com"
+    // TODO: scroll down the page some?
+    // https://github.com/chromedp/chromedp/issues/525
+
+    // TODO: put in config file?
+    sources := []string {
+        "https://gfycat.com",
+        "https://i.imgur.com/",
+    }
 
     urls := make([]string, 0)
     for _, n := range nodes {
         s := n.AttributeValue("href")
-        index := strings.Index(s, sourceUrl)
-        if index > -1 {
-            url := s[index:len(s)]
-            urls = append(urls, url)
+
+        for _, source := range sources {
+            index := strings.Index(s, source)
+            if index > -1 {
+                url := s[index:len(s)]
+                urls = append(urls, url)
+            }
         }
     }
 
@@ -76,14 +85,14 @@ func main() {
 
     for _, file := range files {
         revisedFile := fmt.Sprintf("%s.REVISED.mp4", file[0:len(file) - 4])
-        runCommand(workDir, "ffmpeg", strings.Split(fmt.Sprintf("-i %s -vf scale=1920:1080,scale=w=1920:h=1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black,fps=60 -crf 18 -pix_fmt yuv420p -movflags faststart -c:v libx264 -c:a aac -f mp4 -y %s", file, revisedFile), " "))
+        runCommand(workDir, "ffmpeg", strings.Split(fmt.Sprintf("-i %s -vf scale=w=1920:h=1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black,fps=60 -crf 18 -pix_fmt yuv420p -movflags faststart -c:v libx264 -c:a aac -f mp4 -y %s", file, revisedFile), " "))
 
         if _, err := f.WriteString(fmt.Sprintf("file '%s'\n", revisedFile)); err != nil {
             log.Println(err)
         }
     }
 
-    runCommand(workDir, "ffmpeg", strings.Split(fmt.Sprintf("-f concat -safe 0 -i /tmp/list.txt -c:v copy -c:a copy -movflags faststart -f mp4 -y %s", outputDir + "/export.mp4"), " "))
+    runCommand(workDir, "ffmpeg", strings.Split(fmt.Sprintf("-f concat -safe 0 -i /tmp/list.txt -c copy -movflags faststart -f mp4 -y %s", outputDir + "/export.mp4"), " "))
     fmt.Println("COMPLETE!")
 }
 
