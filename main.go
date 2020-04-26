@@ -32,9 +32,17 @@ func main() {
         os.Exit(0)
     }
 
-    ingestionUrl := os.Args[1]
+    ingestionUrls := make([]string, 0)
+    for i, ingest := range os.Args {
+        if i == 0 {
+            continue
+        }
+        ingestionUrls = append(ingestionUrls, ingest)
+    }
 
     fmt.Println("Starting ingestion process...")
+    filteredUrls := make([]string, 0)
+
     workDir := "/data"
     outputDir := "/output"
 
@@ -48,56 +56,57 @@ func main() {
         _ = os.Mkdir(outputDir, os.ModePerm)
     }
 
-    var html *string = nil
-    //var jsEval *string = nil
-    ctx, cancel := chromedp.NewContext(context.Background())
-    defer cancel()
+    for _, ingestionUrl := range ingestionUrls {
+        var html *string = nil
+        //var jsEval *string = nil
+        ctx, cancel := chromedp.NewContext(context.Background())
+        defer cancel()
 
-    // TODO: scroll down the page some?
-    // https://github.com/chromedp/chromedp/issues/525
-    // scrolling currently doesn't work
-    err := chromedp.Run(
-        ctx,
-        SetCookie("over18", "yes", "www.reddit.com", "/", false, false),
-        chromedp.Navigate(ingestionUrl),
-        chromedp.Sleep(5000 * time.Millisecond),
-        //chromedp.Evaluate(`window.scrollTo(0,document.body.scrollHeight);`, &jsEval),
-        chromedp.Sleep(1000 * time.Millisecond),
-        //chromedp.Evaluate(`window.scrollTo(0,document.body.scrollHeight);`, &jsEval),
-        chromedp.Sleep(2000 * time.Millisecond),
-        chromedp.ActionFunc(func(ctx context.Context) error {
-            node, err := dom.GetDocument().Do(ctx)
-            if err != nil {
+        // TODO: scroll down the page some?
+        // https://github.com/chromedp/chromedp/issues/525
+        // scrolling currently doesn't work
+        err := chromedp.Run(
+            ctx,
+            SetCookie("over18", "yes", "www.reddit.com", "/", false, false),
+            chromedp.Navigate(ingestionUrl),
+            chromedp.Sleep(5000 * time.Millisecond),
+            //chromedp.Evaluate(`window.scrollTo(0,document.body.scrollHeight);`, &jsEval),
+            chromedp.Sleep(1000 * time.Millisecond),
+            //chromedp.Evaluate(`window.scrollTo(0,document.body.scrollHeight);`, &jsEval),
+            chromedp.Sleep(2000 * time.Millisecond),
+            chromedp.ActionFunc(func(ctx context.Context) error {
+                node, err := dom.GetDocument().Do(ctx)
+                if err != nil {
+                    return err
+                }
+
+                data, err := dom.GetOuterHTML().WithNodeID(node.NodeID).Do(ctx)
+                if err != nil {
+                    return err
+                }
+
+                html = &data
                 return err
-            }
+            }))
 
-            data, err := dom.GetOuterHTML().WithNodeID(node.NodeID).Do(ctx)
-            if err != nil {
-                return err
-            }
+        if err != nil {
+            fmt.Errorf("could not navigate to page: %v", err)
+        }
 
-            html = &data
-            return err
-        }))
+        fmt.Println("Loaded web page.. looking for URLs...")
 
-    if err != nil {
-        fmt.Errorf("could not navigate to page: %v", err)
-    }
+        rxStrict := xurls.Strict()
+        rawUrls := rxStrict.FindAllString(*html, -1)
 
-    fmt.Println("Loaded web page.. looking for URLs...")
+        for _, s := range rawUrls {
+            //fmt.Println(s)
 
-    rxStrict := xurls.Strict()
-    rawUrls := rxStrict.FindAllString(*html, -1)
-    filteredUrls := make([]string, 0)
-
-    for _, s := range rawUrls {
-        //fmt.Println(s)
-
-        for _, source := range sources {
-            index := strings.Index(s, source)
-            if index > -1 {
-                url := s[index:len(s)]
-                filteredUrls = append(filteredUrls, url)
+            for _, source := range sources {
+                index := strings.Index(s, source)
+                if index > -1 {
+                    url := s[index:len(s)]
+                    filteredUrls = append(filteredUrls, url)
+                }
             }
         }
     }
