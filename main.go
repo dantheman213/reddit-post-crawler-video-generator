@@ -41,7 +41,7 @@ func main() {
     if _, err := os.Stat(workDir); os.IsNotExist(err) {
         _ = os.Mkdir(workDir, os.ModePerm)
     } else {
-        runCommand(workDir, "find", strings.Split(fmt.Sprintf("%s -type f -name \"*.mp4\" -delete", workDir), " "))
+        runCommand(workDir, "find", strings.Split(fmt.Sprintf("%s -type f -name *.mp4 -delete", workDir), " "))
     }
 
     if _, err := os.Stat(outputDir); os.IsNotExist(err) {
@@ -49,21 +49,33 @@ func main() {
     }
 
     var html *string = nil
+    //var jsEval *string = nil
     ctx, cancel := chromedp.NewContext(context.Background())
     defer cancel()
 
     // TODO: scroll down the page some?
     // https://github.com/chromedp/chromedp/issues/525
+    // scrolling currently doesn't work
     err := chromedp.Run(
-        ctx, chromedp.Navigate(ingestionUrl),
-        chromedp.Sleep(5000 * time.Millisecond),
+        ctx,
         SetCookie("over18", "yes", "www.reddit.com", "/", false, false),
+        chromedp.Navigate(ingestionUrl),
+        chromedp.Sleep(5000 * time.Millisecond),
+        //chromedp.Evaluate(`window.scrollTo(0,document.body.scrollHeight);`, &jsEval),
+        chromedp.Sleep(1000 * time.Millisecond),
+        //chromedp.Evaluate(`window.scrollTo(0,document.body.scrollHeight);`, &jsEval),
+        chromedp.Sleep(2000 * time.Millisecond),
         chromedp.ActionFunc(func(ctx context.Context) error {
             node, err := dom.GetDocument().Do(ctx)
             if err != nil {
                 return err
             }
+
             data, err := dom.GetOuterHTML().WithNodeID(node.NodeID).Do(ctx)
+            if err != nil {
+                return err
+            }
+
             html = &data
             return err
         }))
@@ -79,7 +91,7 @@ func main() {
     filteredUrls := make([]string, 0)
 
     for _, s := range rawUrls {
-        fmt.Println(s)
+        //fmt.Println(s)
 
         for _, source := range sources {
             index := strings.Index(s, source)
@@ -125,7 +137,7 @@ func main() {
     fmt.Println("COMPLETE!")
 }
 
-func runCommand(dir, command string, args []string) {
+func runCommand(dir, command string, args []string) error {
     cmd := exec.Command(command, args...)
     cmd.Dir = dir
 
@@ -136,10 +148,11 @@ func runCommand(dir, command string, args []string) {
     cmd.Stderr = mw
 
     if err := cmd.Run(); err != nil {
-        log.Panic(err)
+        return err
     }
 
     log.Println(stdBuffer.String())
+    return nil
 }
 
 func SetCookie(name, value, domain, path string, httpOnly, secure bool) chromedp.Action {
