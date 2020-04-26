@@ -130,13 +130,13 @@ func main() {
     }
     fmt.Printf("Found %d media items...\n", count)
 
-    // Check and proceed with update (if exists) for youtube-dl before proceeding.
+    fmt.Println("Checking for any updates to youtube-dl...")
     runCommand(originalSourceDir, "youtube-dl", []string {"-U"})
 
     // Go through each filteredUrl and download the video using youtube-dl
     for _, url := range dedupeList(filteredUrls) {
         fmt.Printf("Attempting %s\n", url)
-        runCommand(originalSourceDir, "youtube-dl", strings.Split(fmt.Sprintf("--no-check-certificate --prefer-ffmpeg --restrict-filenames %s", url), " "))
+        runCommand(originalSourceDir, "youtube-dl", strings.Split(fmt.Sprintf("--cache-dir /cache --no-check-certificate --prefer-ffmpeg --restrict-filenames %s", url), " "))
     }
 
     // Get the list of files that was downloaded to the original sources
@@ -152,7 +152,7 @@ func main() {
     // Output videos into revised folder
     for _, file := range files {
         revisedFile := fmt.Sprintf("%s/%s.REVISED.mp4", revisedSourceDir, file[strings.LastIndex(file, "/") + 1:len(file) - 4])
-        runCommand(originalSourceDir, "ffmpeg", strings.Split(fmt.Sprintf("-i %s -vf scale=w=1920:h=1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black,fps=60 -c:v libx264 -preset slow -crf 18 -pix_fmt yuv420p -c:a aac -b:a 128k -ar 44100 -map 0:a -movflags faststart -f mp4 -y %s", file, revisedFile), " "))
+        runCommand(originalSourceDir, "ffmpeg", strings.Split(fmt.Sprintf("-i %s -vf scale=w=1920:h=1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black,fps=60 -c:v libx264 -preset:v slow -crf 18 -pix_fmt yuv420p -map 0:v -c:a aac -ab 128k -ar 44100 -map 0:a? -movflags faststart -f mp4 -y %s", file, revisedFile), " "))
 
         // Write revisedfile into the file concat muxer list
         if _, err := f.WriteString(fmt.Sprintf("file '%s'\n", revisedFile)); err != nil {
