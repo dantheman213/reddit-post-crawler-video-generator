@@ -14,7 +14,7 @@ This app works with Chrome (headless), ffmpeg, and youtube-dl wrapped in a Docke
 docker build -t rpcvg .
 
 # Run container with single ingestion
-docker run --name rpcvg \
+docker run --rm --name rpcvg \
     -v /opt/rpcvg/cache:/cache \
     -v /opt/rpcvg/sources:/data \
     -v /opt/rpcvg/output:/output \
