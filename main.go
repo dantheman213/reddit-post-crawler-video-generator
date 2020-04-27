@@ -30,10 +30,10 @@ var sources []string = []string {
 func main() {
     if len(os.Args) <= 1 {
         fmt.Println("Usage: ./rpcvg <reddit subreddit/duration>")
-        fmt.Println("Example 1: ./rpcvg BetterEveryLoop|week")
-        fmt.Printf("Example 2: ./rpcvg BetterEveryLoop|week funny|month gifs|week\n\n")
+        fmt.Println("Example 1: ./rpcvg BetterEveryLoop,week")
+        fmt.Printf("Example 2: ./rpcvg BetterEveryLoop,week funny,month gifs,week\n\n")
         fmt.Println("OPTIONS:")
-        fmt.Println("Duration: hour,day,week,month,year,all,*")
+        fmt.Println("Duration: hour,day,week,month,year,all")
         os.Exit(0)
     }
 
@@ -43,7 +43,7 @@ func main() {
             continue
         }
 
-        parts := strings.Split(ingest, "|")
+        parts := strings.Split(ingest, ",")
         url := fmt.Sprintf("https://www.reddit.com/r/%s/top/?t=%s", parts[0], strings.ToLower(parts[1]))
 
         ingestionUrls = append(ingestionUrls, url)
@@ -193,7 +193,7 @@ func main() {
 }
 
 func printPercentageDone(current, max int64) {
-    fmt.Printf("\n\nOperation is %.1f%% complete!\n\n\n", math.Abs(float64(current) / float64(max)) * 100)
+    fmt.Printf("\n\n\nOperation is %.1f%% complete!\n\n\n", math.Abs(float64(current) / float64(max)) * 100)
 }
 
 func runCommand(dir, command string, args []string) error {

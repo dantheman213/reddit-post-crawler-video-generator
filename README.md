@@ -1,17 +1,16 @@
 # reddit-post-crawler-video-generator
 
-Get popular GIFs and videos on the Internet and aggregate them into a video.
+Generate a single video from popular subreddits containing videos and GIFs and aggregate them into a video.
 
 ### How It Works
 
-This app works with Chrome (headless), ffmpeg, and youtube-dl wrapped in a Docker image to ingest, process, and produce content from your favorite Reddit subs.
-
+This Golang app works with Chrome (headless), ffmpeg, and youtube-dl wrapped in a Docker image to ingest, process, and produce content from your favorite Reddit subs.
 
 ### Getting Started
 
 #### Get this Docker image from DockerHub
 
-[dantheman213/rpcvg](https://hub.docker.com/repository/docker/dantheman213/rpcvg)
+Check out the image on DockerHub at [dantheman213/rpcvg](https://hub.docker.com/repository/docker/dantheman213/rpcvg) or pull it:
 
 ```
 docker pull dantheman213/rpcvg
@@ -27,6 +26,15 @@ NOTE: Use `rpcvg:latest` in the `run` command below instead if building from thi
 
 #### Run the container
 
+##### Usage
+
+```
+./rpcvg <reddit subreddit/duration>
+ex: ./rpcvg BetterEveryLoop,week
+
+Duration: hour,day,week,month,year,all
+```
+
 ##### Run container with single ingestion
 
 ```
@@ -35,16 +43,16 @@ docker run --rm -d --name rpcvg \
     -v /opt/rpcvg/sources:/data \
     -v /opt/rpcvg/output:/output \
     dantheman213/rpcvg:latest \
-    https://www.reddit.com/r/BetterEveryLoop/top/?t=year
+    gifs,month
 ```
 
 ##### Run container with multiple ingestions
 
 ```
 docker ... dantheman213/rpcvg:latest \
-    https://www.reddit.com/r/BetterEveryLoop/top/?t=year \
-    https://www.reddit.com/r/gifs/top/?t=year \
-    https://www.reddit.com/r/funny/top/?t=year
+    gifs,month \
+    BetterEveryLoop,month \
+    videos,all
 ```
 
 ##### Running on Windows
