@@ -10,19 +10,21 @@ This app works with Chrome (headless), ffmpeg, and youtube-dl wrapped in a Docke
 ### Getting Started
 
 ```
-# Build image
+# Build image (if pulling from this repo)
 docker build -t rpcvg .
 
+Use `rpcvg:latest` in the `run` command below instead if building from this repo
+
 # Run container with single ingestion
-docker run --rm --name rpcvg \
+docker run --rm -d --name rpcvg \
     -v /opt/rpcvg/cache:/cache \
     -v /opt/rpcvg/sources:/data \
     -v /opt/rpcvg/output:/output \
-    rpcvg:latest \
+    dantheman213/rpcvg:latest \
     https://www.reddit.com/r/BetterEveryLoop/top/?t=year
 
 # Run container with multiple ingestions
-docker ... rpcvg:latest \
+docker ... dantheman213/rpcvg:latest \
     https://www.reddit.com/r/BetterEveryLoop/top/?t=year \
     https://www.reddit.com/r/gifs/top/?t=year \
     https://www.reddit.com/r/funny/top/?t=year
