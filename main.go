@@ -11,6 +11,7 @@ import (
     "github.com/mvdan/xurls"
     "io"
     "log"
+    "math"
     "math/rand"
     "os"
     "os/exec"
@@ -133,10 +134,12 @@ func main() {
     runCommand(originalSourceDir, "youtube-dl", []string {"-U"})
 
     // Go through each filteredUrl and download the video using youtube-dl
-    for _, url := range dedupeList(filteredUrls) {
+    deduped := dedupeList(filteredUrls)
+    for i, url := range deduped {
         fmt.Printf("Attempting %s\n", url)
         time.Sleep(time.Duration(random(1500, 6500)) * time.Millisecond) // make sure external providers don't throttle your ingestion
         runCommand(originalSourceDir, "youtube-dl", strings.Split(fmt.Sprintf("--cache-dir /cache --no-check-certificate --prefer-ffmpeg --restrict-filenames %s", url), " "))
+        printPercentageDone(int64(i), int64(len(deduped)))
     }
 
     // Get the list of files that was downloaded to the original sources
@@ -150,7 +153,7 @@ func main() {
 
     // Normalize all the ingested videos into a common format: 1080p, 60fps, 16:9 aspect ratio without stretching image, pixel format, audio codec/bitrate/sample rate, etc.
     // Output videos into revised folder
-    for _, file := range files {
+    for i, file := range files {
         revisedFile := fmt.Sprintf("%s/%s.REVISED.mp4", revisedSourceDir, file[strings.LastIndex(file, "/") + 1:len(file) - 4])
         runCommand(originalSourceDir, "ffmpeg", strings.Split(fmt.Sprintf("-i %s -f lavfi -i anullsrc=cl=1 -vf scale=w=1920:h=1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black,fps=60 -c:v libx264 -preset:v slow -crf 18 -pix_fmt yuv420p -shortest -c:a aac -ab 128k -ac 2 -ar 44100 -movflags faststart -f mp4 -y %s", file, revisedFile), " "))
 
@@ -168,12 +171,18 @@ func main() {
                 _ = os.Remove(revisedFile)
             }
         }
+
+        printPercentageDone(int64(i), int64(len(files)))
     }
 
     // Generate the exported final product which will concatenate all the revised videos together into one container
     exportFilePath := fmt.Sprintf("%s/export_%s.mp4", outputDir, time.Now().Format("20060102150405"))
     runCommand(revisedSourceDir, "ffmpeg", strings.Split(fmt.Sprintf("-f concat -safe 0 -i /tmp/list.txt -c:v copy -c:a copy -strict -2 -fflags +genpts -movflags faststart -f mp4 -y %s", exportFilePath), " "))
     fmt.Println("COMPLETE!")
+}
+
+func printPercentageDone(current, max int64) {
+    fmt.Printf("Operation is %.2f% complete!", math.Abs(float64(current) / float64(max)))
 }
 
 func runCommand(dir, command string, args []string) error {
@@ -224,8 +233,9 @@ func dedupeList(s []string) []string {
     seen := make(map[string]struct{})
 
     for _, val := range s {
-        if _, ok := seen[val]; !ok {
-            result = append(result, val)
+        normalizedStr := strings.TrimSpace(strings.ToLower(val))
+        if _, ok := seen[normalizedStr]; !ok {
+            result = append(result, val) // use original filename but just check if there are no dupes on case
             seen[val] = struct{}{}
         }
     }
