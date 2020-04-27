@@ -29,8 +29,11 @@ var sources []string = []string {
 
 func main() {
     if len(os.Args) <= 1 {
-        fmt.Println("./rpcvg <reddit url>")
-        fmt.Println("https://www.reddit.com/r/BetterEveryLoop/top/?t=week")
+        fmt.Println("Usage: ./rpcvg <reddit subreddit/duration>")
+        fmt.Println("Example 1: ./rpcvg BetterEveryLoop|week")
+        fmt.Printf("Example 2: ./rpcvg BetterEveryLoop|week funny|month gifs|week\n\n")
+        fmt.Println("OPTIONS:")
+        fmt.Println("Duration: hour,day,week,month,year,all,*")
         os.Exit(0)
     }
 
@@ -39,7 +42,11 @@ func main() {
         if i == 0 {
             continue
         }
-        ingestionUrls = append(ingestionUrls, ingest)
+
+        parts := strings.Split(ingest, "|")
+        url := fmt.Sprintf("https://www.reddit.com/r/%s/top/?t=%s", parts[0], strings.ToLower(parts[1]))
+
+        ingestionUrls = append(ingestionUrls, url)
     }
 
     fmt.Println("Starting ingestion process...")
@@ -50,6 +57,7 @@ func main() {
     revisedSourceDir := workDir + "/revised"
     outputDir := "/output"
 
+    // create dirs that need to exist
     if _, err := os.Stat(workDir); os.IsNotExist(err) {
         _ = os.Mkdir(workDir, os.ModePerm)
     }
@@ -62,12 +70,12 @@ func main() {
         _ = os.Mkdir(revisedSourceDir, os.ModePerm)
     }
 
-    runCommand(workDir, "find", strings.Split(fmt.Sprintf("%s -type f -name *.mp4 -delete", workDir), " "))
-
     if _, err := os.Stat(outputDir); os.IsNotExist(err) {
         _ = os.Mkdir(outputDir, os.ModePerm)
     }
 
+    fmt.Println("Clearing work cache....")
+    runCommand(workDir, "find", strings.Split(fmt.Sprintf("%s -type f -name *.mp4 -delete", workDir), " "))
     runCommand("/tmp", "rm", strings.Split("-fv /tmp/list.txt", " "))
 
     for _, ingestionUrl := range ingestionUrls {
@@ -185,7 +193,7 @@ func main() {
 }
 
 func printPercentageDone(current, max int64) {
-    fmt.Printf("\n\nOperation is %.2f%% complete!\n\n\n", math.Abs(float64(current) / float64(max)) * 100)
+    fmt.Printf("\n\nOperation is %.1f%% complete!\n\n\n", math.Abs(float64(current) / float64(max)) * 100)
 }
 
 func runCommand(dir, command string, args []string) error {
