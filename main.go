@@ -154,10 +154,18 @@ func main() {
         revisedFile := fmt.Sprintf("%s/%s.REVISED.mp4", revisedSourceDir, file[strings.LastIndex(file, "/") + 1:len(file) - 4])
         runCommand(originalSourceDir, "ffmpeg", strings.Split(fmt.Sprintf("-i %s -f lavfi -i anullsrc=cl=1 -vf scale=w=1920:h=1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black,fps=60 -c:v libx264 -preset:v slow -crf 18 -pix_fmt yuv420p -shortest -c:a aac -ab 128k -ac 2 -ar 44100 -movflags faststart -f mp4 -y %s", file, revisedFile), " "))
 
-        // Write revisedfile into the file concat muxer list
+        // check if ffmpeg created the asset as we expected
         if _, err := os.Stat(revisedFile); os.IsExist(err) {
-            if _, err := f.WriteString(fmt.Sprintf("file '%s'\n", revisedFile)); err != nil {
-                log.Println(err)
+            // if exists, make sure the file is at least 800KB, otherwise likely corrupted, garbage, or a copyright notice clip
+            size, err := getFileSizeInBytes(revisedFile)
+            if err != nil && size >= 800000 {
+                // Write revised file into the file concat muxer list
+                if _, err := f.WriteString(fmt.Sprintf("file '%s'\n", revisedFile)); err != nil {
+                    log.Println(err)
+                }
+            } else {
+                fmt.Printf("Detected and removing possible garbage at %s...", revisedFile)
+                _ = os.Remove(revisedFile)
             }
         }
     }
@@ -249,4 +257,12 @@ func walkMatch(root, pattern string) ([]string, error) {
 
 func random(min, max int) int {
     return rand.Intn(max - min) + min
+}
+
+func getFileSizeInBytes(filepath string) (int64, error) {
+    fi, err := os.Stat(filepath)
+    if err != nil {
+        return 0, err
+    }
+    return fi.Size(), nil
 }
