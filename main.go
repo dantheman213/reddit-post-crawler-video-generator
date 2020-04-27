@@ -182,7 +182,7 @@ func main() {
 }
 
 func printPercentageDone(current, max int64) {
-    fmt.Printf("Operation is %.2f% complete!", math.Abs(float64(current) / float64(max)))
+    fmt.Printf("\n\nOperation is %.2f%% complete!\n\n\n", math.Abs(float64(current) / float64(max)))
 }
 
 func runCommand(dir, command string, args []string) error {
