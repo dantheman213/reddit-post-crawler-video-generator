@@ -154,15 +154,20 @@ func main() {
     // Normalize all the ingested videos into a common format: 1080p, 60fps, 16:9 aspect ratio without stretching image, pixel format, audio codec/bitrate/sample rate, etc.
     // Output videos into revised folder
     for i, file := range files {
+        printPercentageDone(int64(i), int64(len(files)))
+
         revisedFile := fmt.Sprintf("%s/%s.REVISED.mp4", revisedSourceDir, file[strings.LastIndex(file, "/") + 1:len(file) - 4])
         runCommand(originalSourceDir, "ffmpeg", strings.Split(fmt.Sprintf("-i %s -f lavfi -i anullsrc=cl=1 -vf scale=w=1920:h=1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black,fps=60 -c:v libx264 -preset:v slow -crf 18 -pix_fmt yuv420p -shortest -c:a aac -ab 128k -ac 2 -ar 44100 -movflags faststart -f mp4 -y %s", file, revisedFile), " "))
 
         // check if ffmpeg created the asset as we expected
-        if _, err := os.Stat(revisedFile); os.IsExist(err) {
+        if _, err := os.Stat(revisedFile); !os.IsNotExist(err) {
+            fmt.Printf("Revised file %s exists...\n", revisedFile)
+
             // if exists, make sure the file is at least 800KB, otherwise likely corrupted, garbage, or a copyright notice clip
             size, err := getFileSizeInBytes(revisedFile)
-            if err != nil && size >= 800000 {
+            if err == nil && size >= 800000 {
                 // Write revised file into the file concat muxer list
+                fmt.Printf("Revised file %s has size %d.. adding to list...\n", revisedFile, size)
                 if _, err := f.WriteString(fmt.Sprintf("file '%s'\n", revisedFile)); err != nil {
                     log.Println(err)
                 }
@@ -171,8 +176,6 @@ func main() {
                 _ = os.Remove(revisedFile)
             }
         }
-
-        printPercentageDone(int64(i), int64(len(files)))
     }
 
     // Generate the exported final product which will concatenate all the revised videos together into one container
@@ -182,7 +185,7 @@ func main() {
 }
 
 func printPercentageDone(current, max int64) {
-    fmt.Printf("\n\nOperation is %.2f%% complete!\n\n\n", math.Abs(float64(current) / float64(max)))
+    fmt.Printf("\n\nOperation is %.2f%% complete!\n\n\n", math.Abs(float64(current) / float64(max)) * 100)
 }
 
 func runCommand(dir, command string, args []string) error {
