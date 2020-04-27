@@ -112,8 +112,6 @@ func main() {
         rawUrls := rxStrict.FindAllString(*html, -1)
 
         for _, s := range rawUrls {
-            //fmt.Println(s)
-
             for _, source := range sources {
                 index := strings.Index(s, source)
                 if index > -1 {
@@ -157,8 +155,10 @@ func main() {
         runCommand(originalSourceDir, "ffmpeg", strings.Split(fmt.Sprintf("-i %s -f lavfi -i anullsrc=cl=1 -vf scale=w=1920:h=1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black,fps=60 -c:v libx264 -preset:v slow -crf 18 -pix_fmt yuv420p -shortest -c:a aac -ab 128k -ac 2 -ar 44100 -movflags faststart -f mp4 -y %s", file, revisedFile), " "))
 
         // Write revisedfile into the file concat muxer list
-        if _, err := f.WriteString(fmt.Sprintf("file '%s'\n", revisedFile)); err != nil {
-            log.Println(err)
+        if _, err := os.Stat(revisedFile); os.IsExist(err) {
+            if _, err := f.WriteString(fmt.Sprintf("file '%s'\n", revisedFile)); err != nil {
+                log.Println(err)
+            }
         }
     }
 
