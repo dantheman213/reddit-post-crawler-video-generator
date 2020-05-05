@@ -29,10 +29,11 @@ NOTE: Use `rpcvg:latest` in the `run` command below instead if building from thi
 ##### Usage
 
 ```
-./rpcvg <reddit subreddit/duration>
+./rpcvg <reddit subreddit/highlight-duration>
 ex: ./rpcvg BetterEveryLoop,week
 
-Duration: hour,day,week,month,year,all
+Highlight Duration: hour,day,week,month,year,all
+  - Example: Content from the last [week] only.
 ```
 
 ##### Run container with single ingestion
@@ -48,11 +49,13 @@ docker run --rm -d --name rpcvg \
 
 ##### Run container with multiple ingestions
 
+This will aggregate all videos from all subs into one video.
+
 ```
 docker ... dantheman213/rpcvg:latest \
     gifs,month \
     BetterEveryLoop,month \
-    videos,all
+    NatureGifs,all
 ```
 
 ##### Running on Windows
