@@ -1,6 +1,19 @@
 # reddit-post-crawler-video-generator
 
-Generate a single video from popular subreddits containing videos and GIFs and aggregate them into a video.
+Automatically download and generate compilation videos from popular subreddit(s).
+
+### Getting Started
+
+Grab the most popular content from [r/BetterEveryLoop](https://reddit.com/r/BetterEveryLoop) in the last month and make a video out of it:
+
+```
+docker run --rm -d --name rpcvg \
+    -v /opt/rpcvg/cache:/cache \
+    -v /opt/rpcvg/sources:/data \
+    -v /opt/rpcvg/output:/output \
+    dantheman213/rpcvg:latest \
+    BetterEveryLoop,month
+```
 
 ### How It Works
 
@@ -17,27 +30,15 @@ Here's a break-down of what happens in the script:
   - AAC, 2 channels
 4. Merge normalized videos into a single video
 
-### Getting Started
+### Additional Details
 
-#### Get this Docker image from DockerHub
-
-Check out the image on DockerHub at [dantheman213/rpcvg](https://hub.docker.com/repository/docker/dantheman213/rpcvg) or pull it:
+This software can be found on [DockerHub](https://hub.docker.com/r/dantheman213/rpcvg).
 
 ```
-docker pull dantheman213/rpcvg
+docker pull dantheman213/rpcvg:latest
 ```
 
-#### Build image (if pulling from this repo)
-
-``` 
-docker build -t rpcvg .
-```
-
-NOTE: Use `rpcvg:latest` in the `run` command below instead if building from this repo
-
-#### Run the container
-
-##### Usage
+### Examples
 
 ```
 ./rpcvg <reddit subreddit/highlight-duration>
@@ -47,20 +48,9 @@ Highlight Duration: hour,day,week,month,year,all
   - Example: Content from the last [week] only.
 ```
 
-##### Run container with single ingestion
+##### Run with multiple ingestions
 
-```
-docker run --rm -d --name rpcvg \
-    -v /opt/rpcvg/cache:/cache \
-    -v /opt/rpcvg/sources:/data \
-    -v /opt/rpcvg/output:/output \
-    dantheman213/rpcvg:latest \
-    gifs,month
-```
-
-##### Run container with multiple ingestions
-
-This will aggregate all videos from all subs into one video.
+All videos from all subs will be aggregated into a single comnpilation video.
 
 ```
 docker ... dantheman213/rpcvg:latest \
@@ -69,7 +59,10 @@ docker ... dantheman213/rpcvg:latest \
     NatureGifs,all
 ```
 
-##### Watch the ingestion, encoding, and mering process in real-time
+##### Monitor Logs
+
+Watch the ingestion, encoding, and merging process in real-time:
+
 ```
 docker logs -f rpcvg
 ```
@@ -82,4 +75,13 @@ Here are some example paths you can use:
 -v C:\Users\YOURUSER\Desktop\rpcvg\cache:/cache
 -v C:\Users\YOURUSER\Desktop\rpcvg\source:/data
 -v C:\Users\YOURUSER\Desktop\rpcvg\output:/output
+```
+
+### Development
+
+#### Build image (if pulling from this repo)
+
+``` 
+docker build -t test .
+docker run test:latest
 ```
