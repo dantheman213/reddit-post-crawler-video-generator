@@ -45,16 +45,18 @@ Depending on your CPU, Internet connection, and videos count will determine how 
 ### Examples
 
 ```
-./rpcvg <reddit subreddit/highlight-duration>
+./rpcvg <reddit subreddit/filter(s)>
 ex: ./rpcvg BetterEveryLoop,week
+ex: ./rpcvg BetterEveryLoop,week,all
+ex: ./rpcvg BetterEveryLoop,week NatureGifs,week,month
 
-Highlight Duration: hour,day,week,month,year,all
+Filter: hour,day,week,month,year,all
   - Example: Content from the last [week] only.
 ```
 
 ##### Run with multiple ingestions
 
-All videos from all subs will be aggregated into a single comnpilation video.
+All videos from all subs will be aggregated into a single compilation video.
 
 ```
 docker ... dantheman213/rpcvg:latest \

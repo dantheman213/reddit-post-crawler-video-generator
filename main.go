@@ -29,9 +29,10 @@ var sources []string = []string {
 
 func main() {
     if len(os.Args) <= 1 {
-        fmt.Println("Usage: ./rpcvg <reddit subreddit/duration>")
+        fmt.Println("Usage: ./rpcvg <reddit subreddit/filter(s)>")
         fmt.Println("Example 1: ./rpcvg BetterEveryLoop,week")
-        fmt.Printf("Example 2: ./rpcvg BetterEveryLoop,week funny,month gifs,week\n\n")
+        fmt.Println("Example 2: ./rpcvg BetterEveryLoop,week,all")
+        fmt.Printf("Example 3: ./rpcvg BetterEveryLoop,week funny,month gifs,week\n\n")
         fmt.Println("OPTIONS:")
         fmt.Println("Duration: hour,day,week,month,year,all")
         os.Exit(0)
@@ -44,9 +45,16 @@ func main() {
         }
 
         parts := strings.Split(ingest, ",")
-        url := fmt.Sprintf("https://www.reddit.com/r/%s/top/?t=%s", parts[0], strings.ToLower(parts[1]))
+        subreddit := parts[0]
 
-        ingestionUrls = append(ingestionUrls, url)
+        for k, filter := range parts {
+            if k == 0 {
+                continue
+            }
+
+            url := fmt.Sprintf("https://www.reddit.com/r/%s/top/?t=%s", subreddit, strings.ToLower(filter))
+            ingestionUrls = append(ingestionUrls, url)
+        }
     }
 
     fmt.Println("Starting ingestion process...")
