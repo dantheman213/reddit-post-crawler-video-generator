@@ -125,8 +125,8 @@ func main() {
 
         fmt.Printf("Loaded web page %s.. looking for URLs...\n", ingestionUrl)
 
-        rxStrict := xurls.Strict()
-        rawUrls := rxStrict.FindAllString(*html, -1)
+        //rxStrict := xurls.Strict()
+        rawUrls := xurls.Strict.FindAllString(*html, -1)
 
         for _, s := range rawUrls {
             for _, source := range sources {
