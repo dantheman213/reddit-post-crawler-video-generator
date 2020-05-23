@@ -4,7 +4,7 @@ Automatically download and generate compilation videos from popular subreddit(s)
 
 ### Getting Started
 
-Grab the most popular content from [r/BetterEveryLoop](https://reddit.com/r/BetterEveryLoop) in the last month and make a video out of it:
+Grab the most popular content from [r/BetterEveryLoop](https://www.reddit.com/r/BetterEveryLoop/top/?t=month) in the last month and make a video out of it:
 
 ```
 docker run --rm -d --name rpcvg \
