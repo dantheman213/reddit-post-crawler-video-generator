@@ -1,6 +1,6 @@
 # reddit-post-crawler-video-generator
 
-Automatically download and generate compilation videos from popular subreddit(s).
+Automatically generate compilation videos from popular Reddit posts.
 
 ### Getting Started
 
