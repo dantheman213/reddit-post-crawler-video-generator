@@ -38,6 +38,10 @@ This software can be found on [DockerHub](https://hub.docker.com/r/dantheman213/
 docker pull dantheman213/rpcvg:latest
 ```
 
+#### Video Generation
+
+Depending on your CPU, Internet connection, and videos count will determine how long output video will take to complete. Plan on a minimum of 10 minutes and possibly much longer if you're on a laptop, wifi connection, lots of requested items, etc.
+
 ### Examples
 
 ```
