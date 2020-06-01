@@ -34,20 +34,39 @@ var sources []string = []string {
     "https://twitter.com/",
 }
 
+var workDir string = "/data"
+var originalSourceDir string = workDir + "/original"
+var revisedSourceDir string = workDir + "/revised"
+var outputDir string = "/output"
+
+var skipDownload bool = false
+var skipNormalize bool = false
+
 func main() {
     if len(os.Args) <= 1 {
-        fmt.Println("Usage: ./rpcvg <reddit subreddit/filter(s)>")
-        fmt.Println("Example 1: ./rpcvg BetterEveryLoop,week")
-        fmt.Println("Example 2: ./rpcvg BetterEveryLoop,week,all")
-        fmt.Printf("Example 3: ./rpcvg BetterEveryLoop,week funny,month gifs,week\n\n")
-        fmt.Println("OPTIONS:")
-        fmt.Println("Duration: hour,day,week,month,year,all")
-        os.Exit(0)
+        help()
     }
 
+    readOptions()
+    if !skipDownload && !skipNormalize {
+        ingestURLsFromWebsites()
+    }
+    if !skipNormalize {
+        normalizeVideos()
+    }
+    exportProduct()
+
+    fmt.Println("COMPLETE!")
+}
+
+func ingestURLsFromWebsites() {
     ingestionUrls := make([]string, 0)
     for i, ingest := range os.Args {
         if i == 0 {
+            continue
+        }
+
+        if strings.HasPrefix(ingest, "--") {
             continue
         }
 
@@ -66,11 +85,6 @@ func main() {
 
     fmt.Println("Starting ingestion process...")
     filteredUrls := make([]string, 0)
-
-    workDir := "/data"
-    originalSourceDir := workDir + "/original"
-    revisedSourceDir := workDir + "/revised"
-    outputDir := "/output"
 
     // create dirs that need to exist
     if _, err := os.Stat(workDir); os.IsNotExist(err) {
@@ -176,7 +190,9 @@ func main() {
         runCommand(originalSourceDir, "youtube-dl", strings.Split(fmt.Sprintf("--cache-dir /cache --no-check-certificate --prefer-ffmpeg --restrict-filenames %s", url), " "))
         printPercentageDone(int64(i), int64(len(deduped)))
     }
+}
 
+func normalizeVideos() {
     // Get the list of files that was downloaded to the original sources
     files, _ := walkMatch(originalSourceDir, "*.mp4")
     f, err := os.OpenFile("/tmp/list.txt",
@@ -212,11 +228,35 @@ func main() {
             }
         }
     }
+}
 
+func exportProduct() {
     // Generate the exported final product which will concatenate all the revised videos together into one container
     exportFilePath := fmt.Sprintf("%s/export_%s.mp4", outputDir, time.Now().Format("20060102150405"))
     runCommand(revisedSourceDir, "ffmpeg", strings.Split(fmt.Sprintf("-f concat -safe 0 -i /tmp/list.txt -c:v copy -c:a copy -strict -2 -fflags +genpts -movflags faststart -f mp4 -y %s", exportFilePath), " "))
-    fmt.Println("COMPLETE!")
+}
+
+func readOptions() {
+    if os.Args[1] == "--skip-download" {
+        skipDownload = true
+    } else if os.Args[1] == "--skip-normalize" {
+        skipNormalize = true
+    }
+}
+
+func help() {
+    fmt.Println("Usage: ./rpcvg [options] <reddit subreddit/filter(s)>")
+    fmt.Println("Example 1: ./rpcvg BetterEveryLoop,week")
+    fmt.Println("Example 1: ./rpcvg BetterEveryLoop,week")
+    fmt.Println("Example 2: ./rpcvg BetterEveryLoop,week,all")
+    fmt.Printf("Example 3: ./rpcvg BetterEveryLoop,week funny,month gifs,week\n\n")
+    fmt.Println("FILTERS:")
+    fmt.Println("Duration: hour,day,week,month,year,all")
+    fmt.Println("OPTIONS:")
+    fmt.Println("--skip-download : Skip downloading assets and use whatever is in sources/original and begin normalization process")
+    fmt.Println("--skip-normalize : Skip downloading and normalizing assets and use whatever is in sources/revised to export a final product")
+
+    os.Exit(0)
 }
 
 func printPercentageDone(current, max int64) {
