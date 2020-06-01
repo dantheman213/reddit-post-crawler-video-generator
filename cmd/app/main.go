@@ -11,6 +11,7 @@ import (
     "github.com/chromedp/chromedp"
     "github.com/mvdan/xurls"
     "io"
+    "io/ioutil"
     "log"
     "math"
     "math/rand"
@@ -195,13 +196,6 @@ func ingestURLsFromWebsites() {
 func normalizeVideos() {
     // Get the list of files that was downloaded to the original sources
     files, _ := walkMatch(originalSourceDir, "*.mp4")
-    f, err := os.OpenFile("/tmp/list.txt",
-        os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-    if err != nil {
-        log.Println(err)
-    }
-    defer f.Close()
-
     // Normalize all the ingested videos into a common format: 1080p, 60fps, 16:9 aspect ratio without stretching image, pixel format, audio codec/bitrate/sample rate, etc.
     // Output videos into revised folder
     for i, file := range files {
@@ -209,29 +203,19 @@ func normalizeVideos() {
 
         revisedFile := fmt.Sprintf("%s/%s.REVISED.mp4", revisedSourceDir, file[strings.LastIndex(file, "/") + 1:len(file) - 4])
         runCommand(originalSourceDir, "ffmpeg", strings.Split(fmt.Sprintf("-i %s -f lavfi -i anullsrc=cl=1 -vf scale=w=1920:h=1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black,fps=60 -c:v libx264 -preset:v slow -crf 18 -pix_fmt yuv420p -shortest -c:a aac -ab 128k -ac 2 -ar 44100 -movflags faststart -f mp4 -y %s", file, revisedFile), " "))
-
-        // check if ffmpeg created the asset as we expected
-        if _, err := os.Stat(revisedFile); !os.IsNotExist(err) {
-            fmt.Printf("Revised file %s exists...\n", revisedFile)
-
-            // if exists, make sure the file is at least 800KB, otherwise likely corrupted, garbage, or a copyright notice clip
-            size, err := getFileSizeInBytes(revisedFile)
-            if err == nil && size >= 800000 {
-                // Write revised file into the file concat muxer list
-                fmt.Printf("Revised file %s has size %d.. adding to list...\n", revisedFile, size)
-                if _, err := f.WriteString(fmt.Sprintf("file '%s'\n", revisedFile)); err != nil {
-                    log.Println(err)
-                }
-            } else {
-                fmt.Printf("Detected and removing possible garbage at %s...", revisedFile)
-                _ = os.Remove(revisedFile)
-            }
-        }
     }
 }
 
 func exportProduct() {
     // Generate the exported final product which will concatenate all the revised videos together into one container
+    raw := ""
+    files, _ := walkMatch(originalSourceDir, "*.mp4")
+    fmt.Printf("Exporting %d items to final product...", len(files))
+    for _, file := range files {
+        raw += fmt.Sprintf("file '%s'\n", file)
+    }
+    ioutil.WriteFile("/tmp/list.txt", []byte(raw), os.ModePerm)
+
     exportFilePath := fmt.Sprintf("%s/export_%s.mp4", outputDir, time.Now().Format("20060102150405"))
     runCommand(revisedSourceDir, "ffmpeg", strings.Split(fmt.Sprintf("-f concat -safe 0 -i /tmp/list.txt -c:v copy -c:a copy -strict -2 -fflags +genpts -movflags faststart -f mp4 -y %s", exportFilePath), " "))
 }
