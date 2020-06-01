@@ -7,6 +7,7 @@ import (
     "github.com/chromedp/cdproto/cdp"
     "github.com/chromedp/cdproto/dom"
     "github.com/chromedp/cdproto/network"
+    "github.com/chromedp/cdproto/runtime"
     "github.com/chromedp/chromedp"
     "github.com/mvdan/xurls"
     "io"
@@ -24,7 +25,13 @@ import (
 var sources []string = []string {
     "https://gfycat.com/",
     "https://i.imgur.com/",
-    //"https://preview.redd.it/",
+    "https://www.redgifs.com/",
+    "https://redgifs.com/",
+    "https://preview.redd.it/",
+    "https://v.redd.it/",
+    "https://www.instagram.com/",
+    "https://instagram.com/",
+    "https://twitter.com/",
 }
 
 func main() {
@@ -92,34 +99,48 @@ func main() {
         ctx, cancel := chromedp.NewContext(context.Background())
         defer cancel()
 
-        // TODO: scroll down the page some?
-        // https://github.com/chromedp/chromedp/issues/525
-        // scrolling currently doesn't work
-        err := chromedp.Run(
-            ctx,
+        // create list of actions starting with easily repeated actions (scrolling to bottom)
+        actions := []chromedp.Action {
+            chromedp.ActionFunc(func(ctx context.Context) error {
+                _, exp, err := runtime.Evaluate(`window.scrollTo(0,document.body.scrollHeight);`).Do(ctx)
+                if err != nil {
+                    return err
+                }
+                if exp != nil {
+                    return exp
+                }
+                return nil
+            }),
+            chromedp.Sleep(2000 * time.Millisecond),
+        }
+        for i := 0; i < 10; i++ {
+            actions = append(actions, actions[0], actions[1])
+        }
+
+        // now add list of instructions to top of action list
+        actions = append(actions, []chromedp.Action {
             SetCookie("over18", "yes", "www.reddit.com", "/", false, false),
             chromedp.Navigate(ingestionUrl),
             chromedp.Sleep(5000 * time.Millisecond),
-            //chromedp.Evaluate(`window.scrollTo(0,document.body.scrollHeight);`, &jsEval),
-            chromedp.Sleep(1000 * time.Millisecond),
-            //chromedp.Evaluate(`window.scrollTo(0,document.body.scrollHeight);`, &jsEval),
-            chromedp.Sleep(2000 * time.Millisecond),
-            chromedp.ActionFunc(func(ctx context.Context) error {
-                node, err := dom.GetDocument().Do(ctx)
-                if err != nil {
-                    return err
-                }
+        }...)
 
-                data, err := dom.GetOuterHTML().WithNodeID(node.NodeID).Do(ctx)
-                if err != nil {
-                    return err
-                }
-
-                html = &data
+        // now at the bottom of action list
+        actions = append(actions, chromedp.ActionFunc(func(ctx context.Context) error {
+            node, err := dom.GetDocument().Do(ctx)
+            if err != nil {
                 return err
-            }))
+            }
 
-        if err != nil {
+            data, err := dom.GetOuterHTML().WithNodeID(node.NodeID).Do(ctx)
+            if err != nil {
+                return err
+            }
+
+            html = &data
+            return err
+        }))
+
+        if err := chromedp.Run(ctx, actions...); err != nil {
             fmt.Errorf("could not navigate to page: %v", err)
         }
 
