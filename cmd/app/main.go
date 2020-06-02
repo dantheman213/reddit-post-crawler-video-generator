@@ -18,6 +18,7 @@ import (
     "os"
     "os/exec"
     "path/filepath"
+    "regexp"
     "strings"
     "time"
 )
@@ -196,20 +197,35 @@ func ingestURLsFromWebsites() {
 func normalizeVideos() {
     // Get the list of files that was downloaded to the original sources
     files, _ := walkMatch(originalSourceDir, "*.mp4")
+    fmt.Printf("Found  %d items to transcode...", len(files))
     // Normalize all the ingested videos into a common format: 1080p, 60fps, 16:9 aspect ratio without stretching image, pixel format, audio codec/bitrate/sample rate, etc.
     // Output videos into revised folder
+
+    reg, err := regexp.Compile("[^a-zA-Z0-9]+")
+    if err != nil {
+        log.Fatal(err)
+    }
+
     for i, file := range files {
         printPercentageDone(int64(i), int64(len(files)))
 
-        revisedFile := fmt.Sprintf("%s/%s.REVISED.mp4", revisedSourceDir, file[strings.LastIndex(file, "/") + 1:len(file) - 4])
-        runCommand(originalSourceDir, "ffmpeg", strings.Split(fmt.Sprintf("-i %s -f lavfi -i anullsrc=cl=1 -vf scale=w=1920:h=1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black,fps=60 -c:v libx264 -preset:v slow -crf 18 -pix_fmt yuv420p -shortest -c:a aac -ab 128k -ac 2 -ar 44100 -movflags faststart -f mp4 -y %s", file, revisedFile), " "))
+        interimFile := fmt.Sprintf("%s/%s.mp4", originalSourceDir, reg.ReplaceAllString(file[strings.LastIndex(file, "/") + 1:len(file) - 4], ""))
+        if interimFile != file {
+            fmt.Printf("Renaming file %s to remove bad characters for transcode normalization....\n", file)
+            if err := os.Rename(file, interimFile); err != nil {
+                log.Fatal(err)
+            }
+        }
+
+        revisedFile := fmt.Sprintf("%s/%s.REVISED.mp4", revisedSourceDir, interimFile[strings.LastIndex(interimFile, "/") + 1:len(interimFile) - 4])
+        runCommand(originalSourceDir, "ffmpeg", strings.Split(fmt.Sprintf(`-i %s -f lavfi -i anullsrc=cl=1 -vf scale=w=1920:h=1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black,fps=60 -c:v libx264 -crf 18 -pix_fmt yuv420p -shortest -c:a aac -ab 128k -ac 2 -ar 44100 -movflags faststart -f mp4 %s`, interimFile, revisedFile), " "))
     }
 }
 
 func exportProduct() {
     // Generate the exported final product which will concatenate all the revised videos together into one container
     raw := ""
-    files, _ := walkMatch(originalSourceDir, "*.mp4")
+    files, _ := walkMatch(revisedSourceDir, "*.mp4")
     fmt.Printf("Exporting %d items to final product...", len(files))
     for _, file := range files {
         raw += fmt.Sprintf("file '%s'\n", file)
