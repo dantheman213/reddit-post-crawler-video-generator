@@ -50,8 +50,12 @@ ex: ./rpcvg BetterEveryLoop,week
 ex: ./rpcvg BetterEveryLoop,week,all
 ex: ./rpcvg BetterEveryLoop,week NatureGifs,week,month
 
-Filter: hour,day,week,month,year,all
-  - Example: Content from the last [week] only.
+FILTERS:
+Duration: hour,day,week,month,year,all
+
+OPTIONS:
+--skip-download : Skip downloading assets and use whatever is in sources/original and begin normalization process
+--skip-normalize : Skip downloading and normalizing assets and use whatever is in sources/revised to export a final product
 ```
 
 ##### Run with multiple ingestions
